@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "MyCharacterBase.h"
@@ -40,7 +40,7 @@ void AMyCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	//ø¿∫Í¡ß∆Æ «Æ∏µ
+	//Ïò§Î∏åÏ†ùÌä∏ ÌíÄÎßÅ
 	if (HasAuthority() && ProjectileClassBolt)
 	{
 		FActorSpawnParameters SpawnParams;
@@ -60,6 +60,22 @@ void AMyCharacterBase::BeginPlay()
 			if (SpawnedProj)
 			{
 				ProjectilePoolBolt.Add(SpawnedProj);
+			}
+		}
+	}
+	if (HasAuthority() && ProjectileClassNanoBomb)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = this;
+
+		for (int32 i = 0; i < MaxPoolSizeNanoBomb; ++i)
+		{
+			AMyProjectileBase* SpawnedProj = GetWorld()->SpawnActor<AMyProjectileBase>(
+				ProjectileClassNanoBomb, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+			if (SpawnedProj)
+			{
+				ProjectilePoolNanoBomb.Add(SpawnedProj);
 			}
 		}
 	}
@@ -87,6 +103,7 @@ void AMyCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		UIC->BindAction(AttackAction, ETriggerEvent::Started, this, &AMyCharacterBase::StartAttack);
 
 		UIC->BindAction(SubAttackAction, ETriggerEvent::Started, this, &AMyCharacterBase::StartSubAttack);
+		UIC->BindAction(SubAttackAction, ETriggerEvent::Completed, this, &AMyCharacterBase::StopSubAttack);
 	}
 
 }
@@ -240,6 +257,55 @@ void AMyCharacterBase::StopAiming()
 
 void AMyCharacterBase::StartSubAttack()
 {
+	if (!bIsNanoBombReady)
+	{
+		return;
+	}
+
+	bIsChargingNanoBomb = true;
+	ChargeStartTime = GetWorld()->GetTimeSeconds();
+}
+
+void AMyCharacterBase::StopSubAttack()
+{
+	if (!bIsChargingNanoBomb || !bIsNanoBombReady)
+	{
+		return;
+	}
+
+	bIsChargingNanoBomb = false;
+	bIsNanoBombReady = false; 
+
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float ChargeDuration = CurrentTime - ChargeStartTime;
+	float ChargeRatio = FMath::Clamp(ChargeDuration / MaxChargeTime, 0.0f, 1.0f);
+
+
+	Server_FireNanoBomb(ChargeRatio);
+
+	GetWorldTimerManager().SetTimer(NanoBombCooldownTimer, this, &AMyCharacterBase::RechargeNanoBomb, NanoBombCooldown, false);
+}
+
+void AMyCharacterBase::RechargeNanoBomb()
+{
+	bIsNanoBombReady = true;
+}
+
+void AMyCharacterBase::Server_FireNanoBomb_Implementation(float ChargeRatio)
+{
+	if (ProjectilePoolNanoBomb.Num() > 0)
+	{
+		AMyProjectileBase* ProjectileToFire = ProjectilePoolNanoBomb[PoolIndexNanoBomb];
+		if (ProjectileToFire)
+		{
+			FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * 70.f; // ÏñëÏÜê Ïïû
+			FRotator SpawnRotation = GetControlRotation();
+
+			ProjectileToFire->SetChargeScale(ChargeRatio);
+			ProjectileToFire->ActivateProjectile(SpawnLocation, SpawnRotation);
+		}
+		PoolIndexNanoBomb = (PoolIndexNanoBomb + 1) % MaxPoolSizeNanoBomb;
+	}
 }
 
 void AMyCharacterBase::Server_PlayAttack_Implementation(bool bIsRight)

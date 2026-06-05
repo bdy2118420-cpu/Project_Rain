@@ -36,6 +36,8 @@ public:
 
 	void DeactivateProjectile();
 
+	void SetChargeScale(float ChargeRatio);
+
 	UFUNCTION()
 	void OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 };

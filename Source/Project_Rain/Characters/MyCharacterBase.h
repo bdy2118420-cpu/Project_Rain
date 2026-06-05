@@ -123,6 +123,8 @@ protected:
 	FTimerHandle RechargeTimerHandle;
 
 	void RechargeAmmo();
+
+	UFUNCTION(BlueprintCallable)
 	float GetRechargeProgress() const;
 
 
@@ -139,19 +141,41 @@ protected:
 	const int32 MaxPoolSizeBolt = 6;
 
 	//nanobomb
-	UPROPERTY(EditDefaultsOnly, Category = "Combat|Projectile")
-	TSubclassOf<AMyProjectileBase> ProjectileClassNano;
-
-
-	UPROPERTY()
-	TArray<TObjectPtr<AMyProjectileBase>> ProjectilePoolNano;
-
-
-	int32 PoolIndexNano = 0;
-
-	const int32 MaxPoolSizeNano = 2;
+	
 
 	void StartSubAttack();
+	void StopSubAttack(); 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|NanoBomb")
+	float MaxChargeTime = 3.0f; 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|NanoBomb")
+	float NanoBombCooldown = 5.0f; 
+
+	bool bIsChargingNanoBomb = false;
+	bool bIsNanoBombReady = true;   
+	float ChargeStartTime = 0.0f;   
+
+	FTimerHandle NanoBombCooldownTimer;
+	void RechargeNanoBomb(); 
+
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Projectile")
+	TSubclassOf<AMyProjectileBase> ProjectileClassNanoBomb;
+
+	UPROPERTY()
+	TArray<TObjectPtr<AMyProjectileBase>> ProjectilePoolNanoBomb;
+
+	int32 PoolIndexNanoBomb = 0;
+	int32 MaxPoolSizeNanoBomb = 2;
+
+	// 서버 발사 RPC (차지 비율을 서버로 같이 넘깁니다)
+	UFUNCTION(Server, Reliable)
+	void Server_FireNanoBomb(float ChargeRatio);
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UStaticMeshComponent> ChargeVisualComponent;
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;

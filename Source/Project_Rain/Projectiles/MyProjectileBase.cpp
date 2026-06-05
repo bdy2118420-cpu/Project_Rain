@@ -70,6 +70,13 @@ void AMyProjectileBase::DeactivateProjectile()
 	GetWorldTimerManager().ClearTimer(LifeTimeTimerHandle);
 }
 
+void AMyProjectileBase::SetChargeScale(float ChargeRatio)
+{
+	float FinalScale = FMath::Lerp(1.0f, 3.5f, ChargeRatio);
+
+	SetActorScale3D(FVector(FinalScale));
+}
+
 void AMyProjectileBase::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (OtherActor && OtherActor != GetOwner())
