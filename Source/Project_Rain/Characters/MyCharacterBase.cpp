@@ -11,7 +11,9 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "../Projectiles/MyProjectileBase.h"
-
+#include "NiagaraComponent.h"
+#include "Components/DecalComponent.h"
+#include "NiagaraFunctionLibrary.h"
 
 // Sets default values
 AMyCharacterBase::AMyCharacterBase()
@@ -33,6 +35,25 @@ AMyCharacterBase::AMyCharacterBase()
 	GetCapsuleComponent()->SetCapsuleHalfHeight(70.f);
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+
+	ChargeVisualComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("ChargeVisual"));
+	ChargeVisualComponent->SetupAttachment(GetMesh(), FName("hand_r"));
+	ChargeVisualComponent->bAutoActivate = false;
+
+	FlamethrowerLeft = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerLeft_New"));
+	FlamethrowerLeft->SetupAttachment(GetRootComponent());
+	FlamethrowerLeft->bAutoActivate = false;
+
+	FlamethrowerRight = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerRight_New"));
+	FlamethrowerRight->SetupAttachment(GetRootComponent());
+	FlamethrowerRight->bAutoActivate = false;
+
+	SnapFreezeIndicator = CreateDefaultSubobject<UDecalComponent>(TEXT("SnapFreezeIndicator"));
+	SnapFreezeIndicator->SetupAttachment(GetRootComponent());
+	SnapFreezeIndicator->DecalSize = FVector(100.f, 200.f, 50.f);
+	SnapFreezeIndicator->SetVisibility(false);
+
+	
 }
 
 // Called when the game starts or when spawned
@@ -104,6 +125,12 @@ void AMyCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		UIC->BindAction(SubAttackAction, ETriggerEvent::Started, this, &AMyCharacterBase::StartSubAttack);
 		UIC->BindAction(SubAttackAction, ETriggerEvent::Completed, this, &AMyCharacterBase::StopSubAttack);
+
+		UIC->BindAction(UtilityAttackAction, ETriggerEvent::Started, this, &AMyCharacterBase::StartSnapFreeze);
+		UIC->BindAction(UtilityAttackAction, ETriggerEvent::Completed, this, &AMyCharacterBase::ExecuteSnapFreeze);
+
+		UIC->BindAction(SpecialAttackAction, ETriggerEvent::Started, this, &AMyCharacterBase::StartFlamethrower);
+		UIC->BindAction(SpecialAttackAction, ETriggerEvent::Completed, this, &AMyCharacterBase::StopFlamethrower);
 	}
 
 }
@@ -144,6 +171,78 @@ void AMyCharacterBase::Tick(float DeltaTime)
 	else
 	{
 		GetCharacterMovement()->MaxWalkSpeed = TargetSpeed;
+	}
+
+	if (bIsChargingNanoBomb && ChargeVisualComponent)
+	{
+		float CurrentTime = GetWorld()->GetTimeSeconds();
+		float ChargeRatio = FMath::Clamp((CurrentTime - ChargeStartTime) / MaxChargeTime, 0.0f, 1.0f);
+
+		float VisualScale = FMath::Lerp(1.0f, 2.0f, ChargeRatio);
+		ChargeVisualComponent->SetWorldScale3D(FVector(VisualScale));
+	}
+
+
+	if (bIsAimingSnapFreeze && Camera && SnapFreezeIndicator)
+	{
+		FVector StartLocation = Camera->GetComponentLocation();
+		FVector ForwardVector = Camera->GetForwardVector();
+		FVector EndLocation = StartLocation + (ForwardVector * MaxSnapFreezeRange);
+
+		FHitResult HitResult;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this); 
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+
+		if (bHit)
+		{
+			SnapFreezeIndicator->SetWorldLocation(HitResult.ImpactPoint);
+
+			SnapFreezeIndicator->SetWorldRotation(FRotator(-90.f, Camera->GetComponentRotation().Yaw, 0.f));
+		}
+		else
+		{
+			SnapFreezeIndicator->SetWorldLocation(EndLocation);
+		}
+	}
+
+	if (bIsUsingFlamethrower && Camera)
+	{
+		FVector StartLocation = Camera->GetComponentLocation();
+		FVector ForwardVector = Camera->GetForwardVector();
+
+		float AimUpOffset = 50.f;
+
+		FVector TargetLocation = StartLocation + (ForwardVector * 5000.f) + (Camera->GetUpVector() * AimUpOffset);;
+
+		FHitResult HitResult;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, TargetLocation, ECC_Visibility, CollisionParams))
+		{
+			TargetLocation = HitResult.ImpactPoint;
+		}
+
+		if (FlamethrowerLeft)
+		{
+		
+			FVector LeftHandLoc = GetMesh()->GetSocketLocation(FName("hand_l"));
+			FRotator LeftLookAt = UKismetMathLibrary::FindLookAtRotation(LeftHandLoc, TargetLocation);
+
+			FlamethrowerLeft->SetWorldLocation(LeftHandLoc); 
+			FlamethrowerLeft->SetWorldRotation(LeftLookAt);  
+		}
+
+		if (FlamethrowerRight)
+		{
+			FVector RightHandLoc = GetMesh()->GetSocketLocation(FName("hand_r"));
+			FRotator RightLookAt = UKismetMathLibrary::FindLookAtRotation(RightHandLoc, TargetLocation);
+
+			FlamethrowerRight->SetWorldLocation(RightHandLoc);
+			FlamethrowerRight->SetWorldRotation(RightLookAt);
+		}
 	}
 }
 
@@ -264,6 +363,18 @@ void AMyCharacterBase::StartSubAttack()
 
 	bIsChargingNanoBomb = true;
 	ChargeStartTime = GetWorld()->GetTimeSeconds();
+
+	if (ChargeVisualComponent)
+	{
+		ChargeVisualComponent->SetVisibility(true);
+		ChargeVisualComponent->SetWorldScale3D(FVector(1.0f));
+		ChargeVisualComponent->Activate(true);
+	}
+
+	if (NanoBombChargeMontage)
+	{
+		PlayAnimMontage(NanoBombChargeMontage, 1.0f);
+	}
 }
 
 void AMyCharacterBase::StopSubAttack()
@@ -276,20 +387,48 @@ void AMyCharacterBase::StopSubAttack()
 	bIsChargingNanoBomb = false;
 	bIsNanoBombReady = false; 
 
+	if (ChargeVisualComponent)
+	{
+		ChargeVisualComponent->DeactivateImmediate();
+		ChargeVisualComponent->SetVisibility(false);
+	}
+
+
+	if (NanoBombChargeMontage)
+	{
+		StopAnimMontage(NanoBombChargeMontage);
+	}
+
+	if (NanoBombFireMontage)
+	{
+		PlayAnimMontage(NanoBombFireMontage, 1.5f);
+	}
+
+
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 	float ChargeDuration = CurrentTime - ChargeStartTime;
 	float ChargeRatio = FMath::Clamp(ChargeDuration / MaxChargeTime, 0.0f, 1.0f);
 
-
 	Server_FireNanoBomb(ChargeRatio);
 
 	GetWorldTimerManager().SetTimer(NanoBombCooldownTimer, this, &AMyCharacterBase::RechargeNanoBomb, NanoBombCooldown, false);
+
+	if (OnNanoBombCooldownStarted.IsBound())
+	{
+		OnNanoBombCooldownStarted.Broadcast(NanoBombCooldown);
+	}
 }
 
 void AMyCharacterBase::RechargeNanoBomb()
 {
 	bIsNanoBombReady = true;
+
+	if (OnNanoBombReady.IsBound())
+	{
+		OnNanoBombReady.Broadcast();
+	}
 }
+
 
 void AMyCharacterBase::Server_FireNanoBomb_Implementation(float ChargeRatio)
 {
@@ -319,7 +458,19 @@ void AMyCharacterBase::Server_PlayAttack_Implementation(bool bIsRight)
 		if (ProjectileToFire)
 		{
 			FVector SpawnLocation = GetActorLocation() + GetActorForwardVector() * 50.f;
-			FRotator SpawnRotation = GetControlRotation();
+			FVector CameraLocation = Camera->GetComponentLocation();
+			FVector TargetLocation = CameraLocation + (Camera->GetForwardVector() * 5000.f);
+
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			CollisionParams.AddIgnoredActor(this);
+
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TargetLocation, ECC_Visibility, CollisionParams))
+			{
+				TargetLocation = HitResult.ImpactPoint;
+			}
+
+			FRotator SpawnRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation);
 
 			ProjectileToFire->ActivateProjectile(SpawnLocation, SpawnRotation);
 		}
@@ -374,4 +525,129 @@ float AMyCharacterBase::GetRechargeProgress() const
 		return RemainingTime / RechargeTime;
 	}
 	return 0.0f;
+}
+
+void AMyCharacterBase::StartSnapFreeze()
+{
+	if (!bIsSnapFreezReady)
+	{
+		return;
+	}
+	bIsAimingSnapFreeze = true;
+
+	if (SnapFreezeIndicator)
+	{
+		SnapFreezeIndicator->SetVisibility(true);
+	}
+}
+
+void AMyCharacterBase::ExecuteSnapFreeze()
+{
+	if (!bIsAimingSnapFreeze || !bIsSnapFreezReady)
+	{
+		return;
+	}
+
+	bIsAimingSnapFreeze = false;
+	bIsSnapFreezReady = false;
+
+	if (SnapFreezeIndicator)
+	{
+		SnapFreezeIndicator->SetVisibility(false);
+
+		FVector SpawnLocation = SnapFreezeIndicator->GetComponentLocation();
+		FRotator SpawnRotation = FRotator(0.f, SnapFreezeIndicator->GetComponentRotation().Yaw, 0.f);
+
+		if (SnapFreezeEffectAsset)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SnapFreezeEffectAsset, SpawnLocation, SpawnRotation);
+		}
+
+		GetWorldTimerManager().SetTimer(SnapFreezCooldownTimer,this,&AMyCharacterBase::RechargeSnapFreez,SnapFreezCooldown,false);
+
+		if (OnSnapFreezeCooldownStarted.IsBound())
+		{
+			OnSnapFreezeCooldownStarted.Broadcast(SnapFreezCooldown);
+		}
+	}
+}
+
+void AMyCharacterBase::RechargeSnapFreez()
+{
+	bIsSnapFreezReady = true;
+
+	if (OnSnapFreezeReady.IsBound())
+	{
+		OnSnapFreezeReady.Broadcast();
+	}
+}
+
+void AMyCharacterBase::StartFlamethrower()
+{
+	if (!bIsFlamethrowerReady)
+	{
+		return;
+	}
+
+	if (FlamethrowerMontage)
+	{
+		PlayAnimMontage(FlamethrowerMontage, 1.0f);
+	}
+
+	bIsUsingFlamethrower = true;
+
+	if (FlamethrowerLeft)
+	{
+		FlamethrowerLeft->Activate(true);
+	}
+	if (FlamethrowerRight)
+	{
+		FlamethrowerRight->Activate(true);
+	}
+
+	GetWorldTimerManager().SetTimer(FlamethrowerDurationTimer, this, &AMyCharacterBase::StopFlamethrower, MaxFlamethrowerDuration, false);
+
+}
+
+void AMyCharacterBase::StopFlamethrower()
+{
+	if (!bIsUsingFlamethrower) return;
+
+	bIsUsingFlamethrower = false;
+	bIsFlamethrowerReady = false;
+
+	GetWorldTimerManager().ClearTimer(FlamethrowerDurationTimer);
+
+	if (FlamethrowerLeft)
+	{
+		FlamethrowerLeft->DeactivateImmediate();
+		
+	}
+	if (FlamethrowerRight)
+	{
+		FlamethrowerRight->DeactivateImmediate();
+	}
+
+	if (FlamethrowerMontage)
+	{
+		StopAnimMontage(FlamethrowerMontage);
+	}
+
+	GetWorldTimerManager().SetTimer(FlamethrowerCooldownTimer,this,&AMyCharacterBase::RechargeFlamethrower,FlamethrowerCooldown,false);
+
+
+	if (OnFlamethrowerCooldownStarted.IsBound())
+	{
+		OnFlamethrowerCooldownStarted.Broadcast(FlamethrowerCooldown);
+	}
+}
+
+void AMyCharacterBase::RechargeFlamethrower()
+{
+	bIsFlamethrowerReady = true;
+
+	if (OnFlamethrowerReady.IsBound())
+	{
+		OnFlamethrowerReady.Broadcast();
+	}
 }

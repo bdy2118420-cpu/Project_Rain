@@ -11,13 +11,23 @@
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAmoChangedDelegate, int32, NewAmmo);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNanoBombCooldownSignature, float, CooldownDuration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnNanoBombReadySignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSnapFreezeCooldownSignature, float, CooldownDuration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSnapFreezeReadySignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFlamethrowerCooldownSignature, float, CooldownDuration);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFlamethrowerReadySignature);
+
 
 class UInputAction;
 class UCameraComponent;
 class USpringArmComponent;
 class UAnimMontage;
-
 class AMyProjectileBase;
+class UStaticMeshComponent;
+class UNiagaraComponent;
+class UDecalComponent;
+class UNiagaraSystem;
 
 UCLASS()
 class PROJECT_RAIN_API AMyCharacterBase : public ACharacter
@@ -81,6 +91,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SubAttackAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> UtilityAttackAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> SpecialAttackAction;
+
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
@@ -101,10 +117,10 @@ protected:
 	void Multicast_PlayAttack(bool bIsRight);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<class UAnimMontage> ShootLeftMontage;
+	TObjectPtr<UAnimMontage> ShootLeftMontage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<class UAnimMontage> ShootRightMontage;
+	TObjectPtr<UAnimMontage> ShootRightMontage;
 
 
 
@@ -141,7 +157,11 @@ protected:
 	const int32 MaxPoolSizeBolt = 6;
 
 	//nanobomb
-	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAnimMontage> NanoBombChargeMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAnimMontage> NanoBombFireMontage;
 
 	void StartSubAttack();
 	void StopSubAttack(); 
@@ -168,14 +188,82 @@ protected:
 
 	int32 PoolIndexNanoBomb = 0;
 	int32 MaxPoolSizeNanoBomb = 2;
-
-	// 서버 발사 RPC (차지 비율을 서버로 같이 넘깁니다)
 	UFUNCTION(Server, Reliable)
 	void Server_FireNanoBomb(float ChargeRatio);
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UNiagaraComponent> ChargeVisualComponent;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnNanoBombCooldownSignature OnNanoBombCooldownStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnNanoBombReadySignature OnNanoBombReady;
+
+
+	//Utility Skill
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|SnapFreeze")
+	TObjectPtr<UNiagaraSystem> SnapFreezeEffectAsset;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<class UStaticMeshComponent> ChargeVisualComponent;
+	TObjectPtr<UDecalComponent> SnapFreezeIndicator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|NanoBomb")
+	float SnapFreezCooldown = 7.0f;
+	bool bIsSnapFreezReady = true;
+	FTimerHandle SnapFreezCooldownTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|SnapFreeze")
+	float MaxSnapFreezeRange = 1500.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Combat|SnapFreeze")
+	bool bIsAimingSnapFreeze;
+
+	void StartSnapFreeze();
+
+	void ExecuteSnapFreeze();
+
+	void RechargeSnapFreez();
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnSnapFreezeCooldownSignature OnSnapFreezeCooldownStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnSnapFreezeReadySignature OnSnapFreezeReady;
+
+	//flame thrower
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Flamethrower")
+	TObjectPtr<UNiagaraComponent> FlamethrowerLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Flamethrower")
+	TObjectPtr<UNiagaraComponent> FlamethrowerRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAnimMontage> FlamethrowerMontage;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnFlamethrowerCooldownSignature OnFlamethrowerCooldownStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|UI")
+	FOnFlamethrowerReadySignature OnFlamethrowerReady;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Flamethrower")
+	float FlamethrowerCooldown = 8.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Flamethrower")
+	float MaxFlamethrowerDuration = 5.0f;
+
+	bool bIsFlamethrowerReady = true;
+	bool bIsUsingFlamethrower = false;
+	FTimerHandle FlamethrowerCooldownTimer;
+	FTimerHandle FlamethrowerDurationTimer;
+
+	void StartFlamethrower();
+	void StopFlamethrower();
+	void RechargeFlamethrower();
+
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;
