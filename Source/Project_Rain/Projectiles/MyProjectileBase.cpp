@@ -5,12 +5,10 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 #include "TimerManager.h"
-
+#include "Net/UnrealNetwork.h"
 // Sets default values
 AMyProjectileBase::AMyProjectileBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
 	PrimaryActorTick.bCanEverTick = false;
 
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereCollision"));
@@ -29,6 +27,10 @@ AMyProjectileBase::AMyProjectileBase()
 	SetActorEnableCollision(false);
 	ProjectileMovement->bAutoActivate = false;
 
+	bReplicates = true;
+	SetReplicateMovement(true);
+
+	bAlwaysRelevant = true;
 }
 
 void AMyProjectileBase::BeginPlay()
@@ -43,31 +45,23 @@ void AMyProjectileBase::ActivateProjectile(const FVector& SpawnLocation, const F
 {
 
 	SetActorLocationAndRotation(SpawnLocation, SpawnRotation);
-
-
-	SetActorHiddenInGame(false);
-	SetActorEnableCollision(true);
-
-
-	ProjectileMovement->SetUpdatedComponent(CollisionComponent);
 	ProjectileMovement->Velocity = SpawnRotation.Vector() * ProjectileMovement->InitialSpeed;
-	ProjectileMovement->Activate();
 
 	GetWorldTimerManager().SetTimer(LifeTimeTimerHandle, this, &AMyProjectileBase::DeactivateProjectile, MaxLifeTime, false);
+
+	bIsActive = true;
+
+	ForceNetUpdate();
+
+	OnRep_IsActive();
 }
 
 void AMyProjectileBase::DeactivateProjectile()
 {
-
-	SetActorHiddenInGame(true);
-	SetActorEnableCollision(false);
-
-
-	ProjectileMovement->Velocity = FVector::ZeroVector;
-	ProjectileMovement->Deactivate();
-
-
 	GetWorldTimerManager().ClearTimer(LifeTimeTimerHandle);
+
+	bIsActive = false;
+	OnRep_IsActive(); 
 }
 
 void AMyProjectileBase::SetChargeScale(float ChargeRatio)
@@ -84,11 +78,49 @@ void AMyProjectileBase::OnProjectileHit(UPrimitiveComponent* HitComponent, AActo
 
 		if (HasAuthority())
 		{
+			DeactivateProjectile();
 		}
-
-		
-		DeactivateProjectile();
 	}
 }
 
 
+void AMyProjectileBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AMyProjectileBase, bIsActive);
+
+}
+
+void AMyProjectileBase::OnRep_IsActive()
+{
+	if (bIsActive)
+	{
+		SetActorHiddenInGame(false);
+		SetActorEnableCollision(true);
+
+		if (ProjectileMovement)
+		{
+			ProjectileMovement->SetUpdatedComponent(CollisionComponent);
+			ProjectileMovement->SetComponentTickEnabled(true);
+			ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileMovement->InitialSpeed;
+			
+			ProjectileMovement->Activate();
+		}
+
+		ReceiveOnActivated();
+	}
+	else
+	{
+		SetActorHiddenInGame(true);
+		SetActorEnableCollision(false);
+
+		if (ProjectileMovement)
+		{
+			ProjectileMovement->Velocity = FVector::ZeroVector;
+			ProjectileMovement->SetComponentTickEnabled(false);
+			ProjectileMovement->Deactivate();
+		}
+
+		ReceiveOnDeactivated();
+	}
+}

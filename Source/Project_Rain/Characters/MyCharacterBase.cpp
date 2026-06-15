@@ -40,11 +40,11 @@ AMyCharacterBase::AMyCharacterBase()
 	ChargeVisualComponent->SetupAttachment(GetMesh(), FName("hand_r"));
 	ChargeVisualComponent->bAutoActivate = false;
 
-	FlamethrowerLeft = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerLeft_New"));
+	FlamethrowerLeft = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerLeft"));
 	FlamethrowerLeft->SetupAttachment(GetRootComponent());
 	FlamethrowerLeft->bAutoActivate = false;
 
-	FlamethrowerRight = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerRight_New"));
+	FlamethrowerRight = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlamethrowerRight"));
 	FlamethrowerRight->SetupAttachment(GetRootComponent());
 	FlamethrowerRight->bAutoActivate = false;
 
@@ -375,6 +375,8 @@ void AMyCharacterBase::StartSubAttack()
 	{
 		PlayAnimMontage(NanoBombChargeMontage, 1.0f);
 	}
+
+	Server_StartNanoBombCharge();
 }
 
 void AMyCharacterBase::StopSubAttack()
@@ -429,9 +431,58 @@ void AMyCharacterBase::RechargeNanoBomb()
 	}
 }
 
+void AMyCharacterBase::Multicast_FireNanoBomb_Implementation()
+{
+	if (IsLocallyControlled()) return;
+
+	if (ChargeVisualComponent)
+	{
+		ChargeVisualComponent->DeactivateImmediate();
+		ChargeVisualComponent->SetVisibility(false);
+	}
+
+	if (NanoBombChargeMontage)
+	{
+		StopAnimMontage(NanoBombChargeMontage);
+	}
+
+	if (NanoBombFireMontage)
+	{
+		PlayAnimMontage(NanoBombFireMontage, 1.5f);
+	}
+}
+
+void AMyCharacterBase::Multicast_StartNanoBombCharge_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		return;
+	}
+
+	// 다른 사람들의 화면에서 내 캐릭터가 기를 모으는 모션과 이펙트를 켬
+	if (ChargeVisualComponent)
+	{
+		ChargeVisualComponent->SetVisibility(true);
+		ChargeVisualComponent->SetWorldScale3D(FVector(1.0f));
+		ChargeVisualComponent->Activate(true);
+	}
+
+	if (NanoBombChargeMontage)
+	{
+		PlayAnimMontage(NanoBombChargeMontage, 1.0f);
+	}
+}
+
+void AMyCharacterBase::Server_StartNanoBombCharge_Implementation()
+{
+	Multicast_StartNanoBombCharge();
+}
+
 
 void AMyCharacterBase::Server_FireNanoBomb_Implementation(float ChargeRatio)
 {
+	Multicast_FireNanoBomb();
+
 	if (ProjectilePoolNanoBomb.Num() > 0)
 	{
 		AMyProjectileBase* ProjectileToFire = ProjectilePoolNanoBomb[PoolIndexNanoBomb];
@@ -558,10 +609,7 @@ void AMyCharacterBase::ExecuteSnapFreeze()
 		FVector SpawnLocation = SnapFreezeIndicator->GetComponentLocation();
 		FRotator SpawnRotation = FRotator(0.f, SnapFreezeIndicator->GetComponentRotation().Yaw, 0.f);
 
-		if (SnapFreezeEffectAsset)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SnapFreezeEffectAsset, SpawnLocation, SpawnRotation);
-		}
+		Server_ExecuteSnapFreeze(SpawnLocation, SpawnRotation);
 
 		GetWorldTimerManager().SetTimer(SnapFreezCooldownTimer,this,&AMyCharacterBase::RechargeSnapFreez,SnapFreezCooldown,false);
 
@@ -581,7 +629,18 @@ void AMyCharacterBase::RechargeSnapFreez()
 		OnSnapFreezeReady.Broadcast();
 	}
 }
+void AMyCharacterBase::Server_ExecuteSnapFreeze_Implementation(FVector SpawnLocation, FRotator SpawnRotation)
+{
+	Multicast_ExecuteSnapFreeze(SpawnLocation, SpawnRotation);
+}
 
+void AMyCharacterBase::Multicast_ExecuteSnapFreeze_Implementation(FVector SpawnLocation, FRotator SpawnRotation)
+{
+	if (SnapFreezeEffectAsset)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SnapFreezeEffectAsset, SpawnLocation, SpawnRotation);
+	}
+}
 void AMyCharacterBase::StartFlamethrower()
 {
 	if (!bIsFlamethrowerReady)
@@ -607,6 +666,7 @@ void AMyCharacterBase::StartFlamethrower()
 
 	GetWorldTimerManager().SetTimer(FlamethrowerDurationTimer, this, &AMyCharacterBase::StopFlamethrower, MaxFlamethrowerDuration, false);
 
+	Server_StartFlamethrower();
 }
 
 void AMyCharacterBase::StopFlamethrower()
@@ -640,6 +700,11 @@ void AMyCharacterBase::StopFlamethrower()
 	{
 		OnFlamethrowerCooldownStarted.Broadcast(FlamethrowerCooldown);
 	}
+
+	if (IsLocallyControlled())
+	{
+		Server_StopFlamethrower();
+	}
 }
 
 void AMyCharacterBase::RechargeFlamethrower()
@@ -650,4 +715,36 @@ void AMyCharacterBase::RechargeFlamethrower()
 	{
 		OnFlamethrowerReady.Broadcast();
 	}
+}
+
+void AMyCharacterBase::Server_StartFlamethrower_Implementation()
+{
+	Multicast_StartFlamethrower();
+}
+
+void AMyCharacterBase::Multicast_StartFlamethrower_Implementation()
+{
+	if (IsLocallyControlled()) return;
+
+	if (FlamethrowerMontage) PlayAnimMontage(FlamethrowerMontage, 1.0f);
+	bIsUsingFlamethrower = true;
+	if (FlamethrowerLeft) FlamethrowerLeft->Activate(true);
+	if (FlamethrowerRight) FlamethrowerRight->Activate(true);
+}
+
+void AMyCharacterBase::Server_StopFlamethrower_Implementation()
+{
+	Multicast_StopFlamethrower();
+}
+
+void AMyCharacterBase::Multicast_StopFlamethrower_Implementation()
+{
+	// 내 화면(Local)에서는 이미 껐으므로 무시
+	if (IsLocallyControlled()) return;
+
+	// 다른 사람의 캐릭터에서 불 뿜는 모션과 이펙트를 끔
+	bIsUsingFlamethrower = false;
+	if (FlamethrowerLeft) FlamethrowerLeft->DeactivateImmediate();
+	if (FlamethrowerRight) FlamethrowerRight->DeactivateImmediate();
+	if (FlamethrowerMontage) StopAnimMontage(FlamethrowerMontage);
 }

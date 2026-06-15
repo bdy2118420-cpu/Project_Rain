@@ -30,6 +30,14 @@ protected:
 	FTimerHandle LifeTimeTimerHandle;
 	float MaxLifeTime = 3.0f;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsActive)
+	bool bIsActive = false;
+
+	UFUNCTION()
+	void OnRep_IsActive();
+
 public:	
 
 	void ActivateProjectile(const FVector& SpawnLocation, const FRotator& SpawnRotation);
@@ -40,4 +48,10 @@ public:
 
 	UFUNCTION()
 	void OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
+	void ReceiveOnActivated();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
+	void ReceiveOnDeactivated();
 };

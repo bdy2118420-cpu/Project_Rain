@@ -10,6 +10,7 @@
 #include "MyCharacterBase.generated.h"
 
 
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAmoChangedDelegate, int32, NewAmmo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNanoBombCooldownSignature, float, CooldownDuration);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnNanoBombReadySignature);
@@ -191,6 +192,15 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_FireNanoBomb(float ChargeRatio);
 
+	UFUNCTION(Server, Reliable)
+	void Server_StartNanoBombCharge();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartNanoBombCharge();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_FireNanoBomb();
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UNiagaraComponent> ChargeVisualComponent;
@@ -234,10 +244,10 @@ protected:
 
 	//flame thrower
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Flamethrower")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components|Flamethrower")
 	TObjectPtr<UNiagaraComponent> FlamethrowerLeft;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components|Flamethrower")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components|Flamethrower")
 	TObjectPtr<UNiagaraComponent> FlamethrowerRight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
@@ -263,6 +273,24 @@ protected:
 	void StartFlamethrower();
 	void StopFlamethrower();
 	void RechargeFlamethrower();
+
+	UFUNCTION(Server, Reliable)
+	void Server_ExecuteSnapFreeze(FVector SpawnLocation, FRotator SpawnRotation);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ExecuteSnapFreeze(FVector SpawnLocation, FRotator SpawnRotation);
+
+	UFUNCTION(Server, Reliable)
+	void Server_StartFlamethrower();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartFlamethrower();
+
+	UFUNCTION(Server, Reliable)
+	void Server_StopFlamethrower();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopFlamethrower();
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
