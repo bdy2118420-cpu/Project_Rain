@@ -19,13 +19,12 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USphereComponent> CollisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
-
 
 	FTimerHandle LifeTimeTimerHandle;
 	float MaxLifeTime = 3.0f;
@@ -38,12 +37,40 @@ protected:
 	UFUNCTION()
 	void OnRep_IsActive();
 
-public:	
+	// --- 데미지 및 폭발 시스템 ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Stats")
+	float BaseDamage = 15.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	float MinChargeDamage = 15.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	float MaxChargeDamage = 50.0f;
+
+	float CurrentExplosionDamage = 15.0f; // 계산된 데미지 저장소
+	bool bHasExploded = false; // 중복 폭발 방지 스위치
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	bool bIsMultiHitExplosion = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	int32 MaxExplosionHits = 3;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	float ExplosionInterval = 0.4f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
+	float ExplosionRadius = 400.0f;
+
+	int32 CurrentHitCount = 0;
+	FTimerHandle ExplosionTimerHandle;
+
+	void StartExplosion();
+	void ExecuteExplosionHit();
+
+public:
 	void ActivateProjectile(const FVector& SpawnLocation, const FRotator& SpawnRotation);
-
 	void DeactivateProjectile();
-
 	void SetChargeScale(float ChargeRatio);
 
 	UFUNCTION()
@@ -54,4 +81,7 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
 	void ReceiveOnDeactivated();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
+	void ReceiveOnExplosionHit();
 };
