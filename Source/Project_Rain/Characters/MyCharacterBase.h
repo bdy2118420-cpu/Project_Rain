@@ -16,6 +16,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UNiagaraComponent;
 class UDecalComponent;
+class UHealthComponent;
 
 // 우리가 만든 스킬 컴포넌트들 전방 선언
 class UFlameBoltComponent;
@@ -92,6 +93,10 @@ protected:
 	TObjectPtr<UDecalComponent> SnapFreezeIndicator;
 
 public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UHealthComponent> HealthComp;
+
+
 	// 공통 변수 (애니메이션 등에서 참조)
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;

@@ -7,6 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "NiagaraComponent.h"
 #include "Components/DecalComponent.h"
+#include "../Component/HealthComponent.h"
 
 #include "../Component/FlameBoltComponent.h"
 #include "../Component/NanoBombComponent.h"
@@ -52,6 +53,8 @@ AMyCharacterBase::AMyCharacterBase()
 	NanoBombComp = CreateDefaultSubobject<UNanoBombComponent>(TEXT("NanoBombComponent"));
 	SnapFreezeComp = CreateDefaultSubobject<USnapFreezeComponent>(TEXT("SnapFreezeComponent"));
 	FlamethrowerComp = CreateDefaultSubobject<UFlameThrowerComponent>(TEXT("FlamethrowerComponent"));
+
+	HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
 }
 
 void AMyCharacterBase::BeginPlay()
