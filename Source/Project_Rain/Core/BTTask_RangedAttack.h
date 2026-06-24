@@ -9,6 +9,7 @@
 /**
  * 
  */
+
 UCLASS()
 class PROJECT_RAIN_API UBTTask_RangedAttack : public UBTTaskNode
 {
@@ -19,7 +20,9 @@ public:
 protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
-	// 블루프린트에서 어떤 투사체를 발사할지 결정할 수 있는 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Attack")
-	TSubclassOf<AActor> ProjectileClass;
+	TSubclassOf<class AMonsterProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Attack")
+	float AttackRange = 1000.0f;
 };

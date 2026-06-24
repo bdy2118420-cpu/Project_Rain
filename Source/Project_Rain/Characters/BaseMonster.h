@@ -44,4 +44,29 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Monster|Events")
 	void ReceiveOnDied();
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pooling")
+	bool bIsActive = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Pooling")
+	virtual void DeactivateMonster();
+
+
+	FVector DefaultMeshLocation;
+	FRotator DefaultMeshRotation;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Monster|Stats")
+	float BaseHealth = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Monster|Stats")
+	float BaseDamage = 15.0f;
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Stats")
+	float CurrentDamage = 15.0f;
+
+	UFUNCTION(BlueprintCallable, Category = "Pooling")
+	virtual void ActivateMonster(FVector SpawnLocation, FRotator SpawnRotation, float DifficultyMultiplier = 1.0f);
 };

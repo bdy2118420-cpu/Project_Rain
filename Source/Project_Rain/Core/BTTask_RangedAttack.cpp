@@ -1,8 +1,11 @@
-#include "BTTask_RangedAttack.h"
+﻿#include "BTTask_RangedAttack.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h" 
+#include "ProjectilePoolSubsystem.h"
+#include "../Projectiles/MonsterProjectile.h"
 
 UBTTask_RangedAttack::UBTTask_RangedAttack()
 {
@@ -19,14 +22,37 @@ EBTNodeResult::Type UBTTask_RangedAttack::ExecuteTask(UBehaviorTreeComponent& Ow
 
 	AActor* TargetActor = Cast<AActor>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(FName("TargetActor")));
 
-	if (!TargetActor || !ProjectileClass) return EBTNodeResult::Failed;
+	if (!ProjectileClass)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-	FVector SpawnLocation = Monster->GetActorLocation() + (Monster->GetActorForwardVector() * 100.0f);
+	if (!TargetActor) return EBTNodeResult::Failed;
 
+	if (!TargetActor->ActorHasTag(TEXT("Player")))
+	{
+		return EBTNodeResult::Failed;
+	}
+	float Distance = FVector::Distance(Monster->GetActorLocation(), TargetActor->GetActorLocation());
+
+	
+	if (Distance > AttackRange)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	FVector SpawnLocation = Monster->GetActorLocation() + (Monster->GetActorForwardVector() * 150.0f);
 	FVector Direction = (TargetActor->GetActorLocation() - SpawnLocation).GetSafeNormal();
 	FRotator SpawnRotation = Direction.Rotation();
 
-	GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnLocation, SpawnRotation);
+	UProjectilePoolSubsystem* PoolSubsystem = GetWorld()->GetSubsystem<UProjectilePoolSubsystem>();
 
-	return EBTNodeResult::Succeeded;
+	if (PoolSubsystem)
+	{
+	
+		PoolSubsystem->SpawnFromPool(ProjectileClass, SpawnLocation, SpawnRotation, Monster);
+		return EBTNodeResult::Succeeded;
+	}
+
+	return EBTNodeResult::Failed;
 }

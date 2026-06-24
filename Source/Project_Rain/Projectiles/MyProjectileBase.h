@@ -37,7 +37,7 @@ protected:
 	UFUNCTION()
 	void OnRep_IsActive();
 
-	// --- 데미지 및 폭발 시스템 ---
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Stats")
 	float BaseDamage = 15.0f;
 
@@ -47,8 +47,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
 	float MaxChargeDamage = 50.0f;
 
-	float CurrentExplosionDamage = 15.0f; // 계산된 데미지 저장소
-	bool bHasExploded = false; // 중복 폭발 방지 스위치
+	float CurrentExplosionDamage = 15.0f; 
+	bool bHasExploded = false; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Explosion")
 	bool bIsMultiHitExplosion = false;

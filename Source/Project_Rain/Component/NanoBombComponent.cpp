@@ -91,7 +91,7 @@ void UNanoBombComponent::Server_Fire_Implementation(float ChargeRatio)
 		AMyProjectileBase* ProjectileToFire = ProjectilePool[PoolIndex];
 		if (ProjectileToFire)
 		{
-			FVector SpawnLocation = OwnerCharacter->GetActorLocation() + OwnerCharacter->GetActorForwardVector() * 70.f;
+			FVector SpawnLocation = OwnerCharacter->GetActorLocation() + OwnerCharacter->GetActorForwardVector() * 120.f;
 			FRotator SpawnRotation = OwnerCharacter->GetControlRotation();
 
 			ProjectileToFire->SetChargeScale(ChargeRatio);

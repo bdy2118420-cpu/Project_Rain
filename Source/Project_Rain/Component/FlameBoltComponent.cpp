@@ -97,7 +97,7 @@ void UFlameBoltComponent::Server_PlayAttack_Implementation(bool bIsRight)
 			UCameraComponent* Camera = MyChar->FindComponentByClass<UCameraComponent>();
 			if (Camera)
 			{
-				FVector SpawnLocation = MyChar->GetActorLocation() + MyChar->GetActorForwardVector() * 50.f;
+				FVector SpawnLocation = MyChar->GetActorLocation() + MyChar->GetActorForwardVector() * 120.f;
 				FVector CameraLocation = Camera->GetComponentLocation();
 				FVector TargetLocation = CameraLocation + (Camera->GetForwardVector() * 5000.f);
 

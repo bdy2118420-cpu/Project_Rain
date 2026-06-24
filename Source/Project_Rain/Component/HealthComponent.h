@@ -15,11 +15,9 @@ class PROJECT_RAIN_API UHealthComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UHealthComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -54,5 +52,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	bool IsDead() const { return bIsDead; }
+
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	void InitHealth(float NewMaxHealth);
 		
 };

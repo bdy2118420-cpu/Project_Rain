@@ -18,7 +18,6 @@ class UNiagaraComponent;
 class UDecalComponent;
 class UHealthComponent;
 
-// 우리가 만든 스킬 컴포넌트들 전방 선언
 class UFlameBoltComponent;
 class UNanoBombComponent;
 class USnapFreezeComponent;
@@ -49,7 +48,6 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetSprinting(bool bNewSprint);
 
-	// --- 카메라 & 입력 ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UCameraComponent> Camera;
 
@@ -79,7 +77,7 @@ protected:
 	void StartHover();
 	void StopHover();
 
-	// --- 시각적 이펙트 컴포넌트 (스킬 컴포넌트들이 가져다 쓸 껍데기들) ---
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNiagaraComponent> ChargeVisualComponent;
 
@@ -97,11 +95,9 @@ public:
 	TObjectPtr<UHealthComponent> HealthComp;
 
 
-	// 공통 변수 (애니메이션 등에서 참조)
 	UPROPERTY(BlueprintReadOnly, Category = "Combat")
 	bool bIsAiming = false;
 
-	// --- 스킬 컴포넌트 부착 ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Skills")
 	TObjectPtr<UFlameBoltComponent> FlameBoltComp;
 
@@ -115,7 +111,6 @@ public:
 	TObjectPtr<UFlameThrowerComponent> FlamethrowerComp;
 
 protected:
-	// 스킬 키 입력과 컴포넌트를 연결해줄 래퍼(Wrapper) 함수들
 	void Input_StartAttack();
 
 	void Input_StartSubAttack();
