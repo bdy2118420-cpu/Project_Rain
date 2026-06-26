@@ -69,4 +69,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
 	virtual void ActivateMonster(FVector SpawnLocation, FRotator SpawnRotation, float DifficultyMultiplier = 1.0f);
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop System")
+	TSubclassOf<class ADropItemBase> GoldDropClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop System")
+	TSubclassOf<class ADropItemBase> EXPDropClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop System")
+	float BaseRewardGold = 15.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop System")
+	float BaseRewardEXP = 20.0f;
 };

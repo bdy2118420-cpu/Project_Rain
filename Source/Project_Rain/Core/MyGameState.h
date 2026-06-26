@@ -10,6 +10,8 @@
  * 
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDifficultyUpdatedSignature, int32, CurrentSeconds, float, CurrentCoefficient);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLevelChangedSignature, int32, NewLevel, float, MaxEXP);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEXPChangedSignature, float, CurrentEXP, float, MaxEXP);
 
 UCLASS()
 class PROJECT_RAIN_API AMyGameState : public AGameStateBase
@@ -44,4 +46,31 @@ private:
 	FTimerHandle TimeUpdateTimer;
 
 	void UpdateTimeAndDifficulty();
+
+public:
+	
+	UPROPERTY(BlueprintAssignable, Category = "Difficulty|Events")
+	FOnLevelChangedSignature OnLevelChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Difficulty|Events")
+	FOnEXPChangedSignature OnEXPChanged;
+
+	UFUNCTION(BlueprintCallable, Category = "Difficulty|Stats")
+	void AddGlobalEXP(float EXPAdded);
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_GlobalLevel, VisibleAnywhere, BlueprintReadOnly, Category = "Difficulty|Stats")
+	int32 GlobalLevel = 1;
+
+	UPROPERTY(ReplicatedUsing = OnRep_GlobalEXP, VisibleAnywhere, BlueprintReadOnly, Category = "Difficulty|Stats")
+	float GlobalEXP = 0.0f;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Difficulty|Stats")
+	float MaxEXPForNextLevel = 100.0f;
+
+	UFUNCTION()
+	void OnRep_GlobalLevel();
+
+	UFUNCTION()
+	void OnRep_GlobalEXP();
 };

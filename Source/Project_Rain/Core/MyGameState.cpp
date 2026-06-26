@@ -15,6 +15,9 @@ void AMyGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 	DOREPLIFETIME(AMyGameState, TotalSeconds);
 	DOREPLIFETIME(AMyGameState, DifficultyCoefficient);
+	DOREPLIFETIME(AMyGameState, GlobalLevel);
+	DOREPLIFETIME(AMyGameState, GlobalEXP);
+	DOREPLIFETIME(AMyGameState, MaxEXPForNextLevel);
 }
 
 void AMyGameState::BeginPlay()
@@ -42,4 +45,34 @@ void AMyGameState::OnRep_TimeUpdated()
 	{
 		OnDifficultyUpdated.Broadcast(TotalSeconds, DifficultyCoefficient);
 	}
+}
+
+void AMyGameState::AddGlobalEXP(float EXPAdded)
+{
+	if (!HasAuthority()) return;
+
+	GlobalEXP += EXPAdded;
+
+	while (GlobalEXP >= MaxEXPForNextLevel)
+	{
+		GlobalEXP -= MaxEXPForNextLevel;
+		GlobalLevel++;
+
+	
+		MaxEXPForNextLevel *= 1.3f;
+	}
+
+
+	OnRep_GlobalLevel();
+	OnRep_GlobalEXP();
+}
+
+void AMyGameState::OnRep_GlobalLevel()
+{
+	if (OnLevelChanged.IsBound()) OnLevelChanged.Broadcast(GlobalLevel, MaxEXPForNextLevel);
+}
+
+void AMyGameState::OnRep_GlobalEXP()
+{
+	if (OnEXPChanged.IsBound()) OnEXPChanged.Broadcast(GlobalEXP, MaxEXPForNextLevel);
 }

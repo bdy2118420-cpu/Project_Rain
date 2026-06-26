@@ -4,6 +4,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AIController.h"
 #include "BrainComponent.h"
+#include "../Item/DropItemBase.h"
+#include "../Core/MyGameState.h"
 
 ABaseMonster::ABaseMonster()
 {
@@ -50,6 +52,46 @@ void ABaseMonster::Die()
 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 	GetMesh()->SetSimulatePhysics(true);
 
+	if (HasAuthority())
+	{
+		float DiffCoeff = 1.0f;
+
+		AMyGameState* GS = GetWorld()->GetGameState<AMyGameState>();
+		if (GS)
+		{
+			DiffCoeff = GS->GetDifficultyCoefficient();
+		}
+
+		float FinalGold = BaseRewardGold * DiffCoeff;
+		float FinalEXP = BaseRewardEXP * DiffCoeff;
+
+		FVector SpawnLoc = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
+		FRotator SpawnRot = FRotator::ZeroRotator;
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		if (GoldDropClass)
+		{
+			int32 CoinCount = FMath::RandRange(2, 4);
+			float GoldPerCoin = FinalGold / CoinCount;
+			for (int32 i = 0; i < CoinCount; i++)
+			{
+				ADropItemBase* SpawnedGold = GetWorld()->SpawnActor<ADropItemBase>(GoldDropClass, SpawnLoc, SpawnRot, SpawnParams);
+				if (SpawnedGold) SpawnedGold->InitializeDrop(EDropItemType::Gold, GoldPerCoin);
+			}
+		}
+
+		if (EXPDropClass)
+		{
+			int32 ExpCount = FMath::RandRange(3, 5);
+			float ExpPerOrb = FinalEXP / ExpCount;
+			for (int32 i = 0; i < ExpCount; i++)
+			{
+				ADropItemBase* SpawnedEXP = GetWorld()->SpawnActor<ADropItemBase>(EXPDropClass, SpawnLoc, SpawnRot, SpawnParams);
+				if (SpawnedEXP) SpawnedEXP->InitializeDrop(EDropItemType::EXP, ExpPerOrb);
+			}
+		}
+	}
 
 	ReceiveOnDied();
 
