@@ -63,6 +63,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Monster|Stats")
 	float BaseDamage = 15.0f;
 
+	UFUNCTION()
+	void OnHealthComponentDead(AActor* DeadActor);
+
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Stats")
 	float CurrentDamage = 15.0f;

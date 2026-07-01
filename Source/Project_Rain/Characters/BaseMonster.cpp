@@ -30,6 +30,11 @@ void ABaseMonster::BeginPlay()
 	DefaultMeshLocation = GetMesh()->GetRelativeLocation();
 	DefaultMeshRotation = GetMesh()->GetRelativeRotation();
 
+	if (HasAuthority() && HealthComp)
+	{
+		HealthComp->OnDeath.AddDynamic(this, &ABaseMonster::OnHealthComponentDead);
+	}
+
 }
 
 void ABaseMonster::Die()
@@ -149,5 +154,10 @@ void ABaseMonster::DeactivateMonster()
 	{
 		AIController->GetBrainComponent()->StopLogic(TEXT("Deactivated"));
 	}
+}
+
+void ABaseMonster::OnHealthComponentDead(AActor* DeadActor)
+{
+	Die();
 }
 
